@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interactive OpenAI RAG Workflow — Step-by-step simulation</title>
+<style>
+:root{color-scheme:light;font-family:Inter,system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+*{box-sizing:border-box}
+body{background:#f8fafc;margin:0;padding:31px 16px 40px;color:#ecf5ff}
+.wrapper{max-width:770px;margin:auto}
+.shell{background:#0e1625;border:1px solid #1e293b;border-radius:16px;padding:20px 20px 24px;box-shadow:0 1px 3px #0f172a10}
+button,input{font:inherit}
+button{cursor:pointer}
+.tabbar{display:flex;align-items:center;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.tab{padding:12px 14px;color:#c6d7ed;border:1px solid #33445d;background:#1b293e;border-radius:10px;font-size:12px;font-weight:650;min-height:43px}
+.tab[aria-selected="true"]{color:#b6fff4;background:#08483f;border-color:#12c7b4}
+.tab:hover{border-color:#5a758e}
+button:focus-visible,input:focus-visible{outline:2px solid #5eead4;outline-offset:3px}
+.intro{font-size:11px;color:#97a9c2;margin:4px 0 25px;line-height:1.5}
+.steps{display:flex;align-items:center;gap:0;overflow-x:auto;padding:1px 2px 12px;scrollbar-color:#425670 transparent;scrollbar-width:thin}
+.step{flex:1 0 0;min-width:110px;min-height:136px;background:#1a283e;border:1px solid #34465e;border-radius:11px;padding:13px 7px;color:#fff;text-align:center;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;transition:background .13s,border-color .13s}
+.step:hover{border-color:#7f9ebc;background:#20324a}
+.step.active{border:2px solid #18d1be;padding:12px 6px;background:#143d3d;box-shadow:0 0 0 1px #18d1be25}
+.n{color:#53ffec;font-weight:750;letter-spacing:.06em;font-size:10px;margin-bottom:6px}
+.emoji{font-size:22px;min-height:24px;line-height:1.15}
+.stepname{font-size:11px}
+.step .name{font-size:11px;font-weight:750;line-height:1.3;max-width:100%;overflow-wrap:anywhere}
+.step .sub{font-size:10px;line-height:1.35;color:#c3d4f2}
+.arrow{color:#84b6d6;flex:0 0 22px;text-align:center;font-size:22px;line-height:1}
+.info-line{font-size:11px;color:#a4b9d4;margin:13px 0 12px}
+.detail{border:1px solid #34465e;border-radius:13px;background:#19263b;padding:16px 16px 16px}
+.kicker{font-size:10px;color:#43ffe4;font-weight:850;letter-spacing:.06em;text-transform:uppercase;margin:6px 0 14px}
+h2{font-size:15px;margin:0 0 12px;color:#fff;letter-spacing:-.01em}
+.description{font-size:12px;color:#e4eeff;line-height:1.9;margin:0 0 12px;min-height:0}
+pre{white-space:pre-wrap;word-break:break-word;background:#0d1625;border:1px solid #2d3c54;border-radius:9px;padding:15px 11px;font-size:11px;line-height:2.05;color:#5df9e7;min-height:85px;font-family:Consolas,"Cascadia Code",ui-monospace,monospace;margin:8px 0 13px}
+.controls{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.count{font-size:11px;color:#a5c5eb}
+.nav{display:flex;gap:7px}
+.nav button{border:1px solid #475b76;padding:12px 13px;border-radius:9px;font-size:11px;color:white;background:#1b293e;font-weight:600}
+.nav button.next{background:#079889;border-color:#079889;font-weight:800}
+.nav button.next:hover{background:#087d74}
+.nav button:disabled{opacity:.38;cursor:default}
+.fineprint{text-align:center;margin:18px 0 0;color:#8aa0bd;font-size:10px}
+.question-box{margin:-12px 0 17px}
+.question-box label{display:block;font-size:11px;color:#acc4df;margin-bottom:6px}
+.question-box input{width:100%;border:1px solid #526781;border-radius:8px;background:#18273c;padding:10px;color:white;outline:none;font-size:12px}
+.exports{color:#40536d;display:flex;flex-wrap:wrap;align-items:center;gap:7px;justify-content:center;margin:16px 0 5px}
+.exports button{font-size:11px;font-weight:650;background:#fff;border:1px solid #ced7e4;color:#264262;padding:10px 12px;border-radius:9px}
+.exports button:hover{background:#edf6fc}
+#status{font-size:11px;color:#42657b;text-align:center;min-height:20px;margin-top:5px}
+@media(max-width:540px){body{padding:13px 8px}.shell{padding:15px 11px}.intro{margin-bottom:16px}.steps{padding-bottom:12px}.step{flex:0 0 120px;min-width:120px;min-height:126px}.arrow{flex-basis:19px;font-size:18px}.detail{padding:13px}.nav button{padding:10px}.tab{padding:10px;font-size:11px}.count{font-size:10px}}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <main class="shell" aria-label="OpenAI RAG interactive simulation">
+    <div class="tabbar" role="tablist" aria-label="Workflow phase">
+      <button class="tab" type="button" role="tab" data-phase="store" aria-selected="true">1. Store documents</button>
+      <button class="tab" type="button" role="tab" data-phase="ask" aria-selected="false">2. Ask a question</button>
+    </div>
+    <p class="intro" id="intro">First, prepare and store your project's knowledge. Click the steps to explore.</p>
+    <div class="question-box" id="questionBox" hidden>
+      <label for="questionInput">Example user question</label>
+      <input id="questionInput" value="How does payment get confirmed?" autocomplete="off">
+    </div>
+    <div class="steps" id="steps" role="group" aria-label="Clickable workflow steps"></div>
+    <p class="info-line" id="infoLine">🗄️ Store these vectors so future questions can search them.</p>
+    <section class="detail" aria-live="polite">
+      <div class="kicker" id="kicker">KNOWLEDGE PREPARATION · STEP 1</div>
+      <h2 id="detailTitle">Load project documentation</h2>
+      <p class="description" id="description"></p>
+      <pre id="codeExample"></pre>
+      <div class="controls">
+        <span class="count" id="counter">1 of 4 steps</span>
+        <div class="nav">
+          <button type="button" id="prev">Previous</button>
+          <button class="next" type="button" id="next">Next step →</button>
+        </div>
+      </div>
+    </section>
+    <p class="fineprint">Educational simulation · No API requests or real vector search</p>
+  </main>
+  <div class="exports" aria-label="Save and copy diagram">
+    <button id="saveHTML" type="button">↓ Save HTML</button>
+    <button id="savePNG" type="button">↓ Save PNG</button>
+    <button id="saveSVG" type="button">↓ Save SVG</button>
+    <button id="copyImage" type="button">⧉ Copy image</button>
+  </div>
+  <div id="status" role="status"></div>
+</div>
+<script>
+(function(){
+  'use strict';
+  const data={
+    store:[
+      {icon:'📄',name:'Documents',sub:'PDFs / project notes',title:'Load project documentation',desc:'Your .NET application reads the documents it should answer questions about. For this demonstration, we use sample payment-process documentation.',example:'Payment workflow:\n1. Backend creates a checkout session.\n2. Customer completes payment.\n3. Provider sends a signed webhook.\n4. Backend verifies it and marks the order paid.'},
+      {icon:'✂️',name:'Text chunks',sub:'Split large documents',title:'Split documents into text chunks',desc:'Long documents are divided into smaller passages so that you can retrieve only the relevant parts. Store the original chunk text because the chat model needs words, not only numerical vectors.',example:'Chunk 1: Backend creates a checkout session.\n\nChunk 2: Provider sends a signed webhook.\nBackend verifies it and marks the order paid.'},
+      {icon:'🧮',name:'text-embedding-3-small',sub:'Text → vector',title:'Generate embeddings',desc:"Send each text chunk to OpenAI's text-embedding-3-small. It converts the text into numerical vectors. The default output size is 1,536 dimensions.",example:'Input: "Provider sends a signed webhook..."\n\nIllustrative vector:\n[0.021, -0.145, 0.087, ...]\n\n1,536 numbers per chunk by default.'},
+      {icon:'🗄️',name:'Vector database',sub:'Store chunks + vectors',title:'Save searchable knowledge',desc:'Store each vector alongside its original text and document metadata. Later, similarity search identifies the most relevant document chunks for a question.',example:'id: payment-002\ntext: "Provider sends a signed webhook..."\nembedding: [0.021, -0.145, ...]\nsource: payments.md'}
+    ],
+    ask:[
+      {icon:'💬',name:'User question',sub:'ASP.NET Core API',title:'Receive a question',desc:'A user asks a question in your Angular, Vue or React UI. Your ASP.NET Core endpoint receives the question as a normal API request.',example:''},
+      {icon:'🧮',name:'text-embedding-3-small',sub:'Question → vector',title:'Embed the user question',desc:'Use the same embedding model that you used for the documents. Now the question is represented as a vector that can be compared with stored document vectors.',example:'var embedding = await generator\n    .GenerateAsync(question);\n\nvar queryVector = embedding.Vector;'},
+      {icon:'🔎',name:'Similarity search',sub:'Retrieve text chunks',title:'Find the most relevant passages',desc:'Compare the question vector with stored document vectors using semantic similarity (often cosine similarity). Retrieve the original matching passages.',example:'Matching sample passage:\n"Provider sends a signed webhook.\nBackend verifies it and marks the order paid."\n\nExample retrieval is simulated.'},
+      {icon:'🧠',name:'gpt-4o-mini',sub:'Question + context',title:'Generate a grounded answer',desc:'Pass the question and retrieved text to gpt-4o-mini. It uses the supplied information to generate an understandable response.',example:'Prompt:\nContext: [retrieved payment passages]\nQuestion: [user question]\n\nAnswer using the provided context.\n\nawait chatClient.GetResponseAsync(prompt);'},
+      {icon:'✅',name:'Final answer',sub:'Return to the UI',title:'Return the generated answer',desc:'Return the chat model response through your ASP.NET Core API to the UI. In production, include source references and handle questions not supported by the documents.',example:''}
+    ]
+  };
+  const $=id=>document.getElementById(id);
+  let phase='store',index=0;
+  function exampleFor(item){
+    if(phase!=='ask') return item.example;
+    const question=$('questionInput').value.trim()||'(empty question)';
+    if(index===0)return 'POST /api/ask\n{\n  "question": '+JSON.stringify(question)+'\n}';
+    if(index===4)return question.toLowerCase().includes('payment')?'Illustrative response:\n"The provider sends a webhook. The backend validates its signature and event, then updates the order payment status. Do not trust the success URL alone."':'Illustrative response:\nYour application would display a response based on the retrieved passages. This offline simulation does not query a real AI model.';
+    return item.example;
+  }
+  function render(){
+    document.querySelectorAll('.tab').forEach(button=>button.setAttribute('aria-selected',String(button.dataset.phase===phase)));
+    $('intro').textContent=phase==='store'?"First, prepare and store your project's knowledge. Click the steps to explore.":'Now follow the user question through retrieval and response generation. Click the steps to explore.';
+    $('questionBox').hidden=phase!=='ask';
+    $('infoLine').textContent=phase==='store'?'🗄️ Store these vectors so future questions can search them.':'🗄️ Search the previously stored vectors to find matching passages.';
+    const list=data[phase], holder=$('steps'); holder.replaceChildren();
+    list.forEach((step,i)=>{
+      if(i){const arrow=document.createElement('span');arrow.className='arrow';arrow.textContent='→';arrow.setAttribute('aria-hidden','true');holder.appendChild(arrow)}
+      const b=document.createElement('button');b.type='button';b.className='step'+(index===i?' active':'');b.setAttribute('aria-pressed',String(index===i));
+      for(const [cls,content] of [['n','STEP '+(i+1)],['emoji',step.icon],['name',step.name],['sub',step.sub]]){const span=document.createElement('span');span.className=cls;span.textContent=content;b.appendChild(span)}
+      b.addEventListener('click',()=>{index=i;render()});holder.appendChild(b);
+    });
+    const s=list[index];
+    $('kicker').textContent=(phase==='store'?'KNOWLEDGE PREPARATION':'QUESTION ANSWERING')+' · STEP '+(index+1);
+    $('detailTitle').textContent=s.title;
+    $('description').textContent=s.desc;
+    $('codeExample').textContent=exampleFor(s);
+    $('counter').textContent=(index+1)+' of '+list.length+' steps';
+    $('prev').disabled=index===0;
+    $('next').textContent=index===list.length-1?(phase==='store'?'Ask a question →':'Restart ↺'):'Next step →';
+    holder.querySelector('.step.active')?.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});
+  }
+  document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{phase=b.dataset.phase;index=0;render()}));
+  $('prev').addEventListener('click',()=>{if(index>0){index--;render()}});
+  $('next').addEventListener('click',()=>{if(index<data[phase].length-1)index++;else if(phase==='store'){phase='ask';index=0}else index=0;render()});
+  $('questionInput').addEventListener('input',()=>{if(phase==='ask'&&(index===0||index===4)){$('codeExample').textContent=exampleFor(data[phase][index]);}});
+  function svgExport(){
+    const steps=data[phase],width=Math.max(960,steps.length*205+60),height=615,background='#0e1625';
+    const escape=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+    const objects=[];objects.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`);
+    objects.push(`<rect width="${width}" height="${height}" rx="22" fill="${background}"/>`);
+    objects.push('<text x="30" y="44" fill="#52f7e1" font-family="Arial,sans-serif" font-size="24" font-weight="bold">'+(phase==='store'?'1. Store documents':'2. Ask a question')+'</text>');
+    objects.push('<text x="30" y="76" fill="#aec2dc" font-family="Arial,sans-serif" font-size="15">OpenAI RAG workflow — educational simulation</text>');
+    const nodeWidth=(width-100-(steps.length-1)*28)/steps.length;
+    steps.forEach((s,i)=>{
+      const x=30+i*(nodeWidth+28),y=115,active=i===index;
+      objects.push(`<rect x="${x}" y="${y}" width="${nodeWidth}" height="147" rx="13" fill="${active?'#143d3d':'#1a283e'}" stroke="${active?'#18d1be':'#34465e'}" stroke-width="${active?3:1}"/>`);
+      objects.push(`<text x="${x+nodeWidth/2}" y="${y+29}" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="bold" fill="#53ffec">STEP ${i+1}</text>`);
+      const chunks=s.name==='text-embedding-3-small'?['text-embedding-','3-small']:[s.name];
+      chunks.forEach((line,j)=>objects.push(`<text x="${x+nodeWidth/2}" y="${y+72+j*20}" text-anchor="middle" font-family="Arial,sans-serif" font-size="${s.name.length>21?15:17}" font-weight="bold" fill="#ffffff">${escape(line)}</text>`));
+      objects.push(`<text x="${x+nodeWidth/2}" y="${y+121}" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" fill="#b6cced">${escape(s.sub)}</text>`);
+      if(i<steps.length-1)objects.push(`<text x="${x+nodeWidth+9}" y="${y+80}" font-family="Arial,sans-serif" font-size="24" fill="#85badc">→</text>`);
+    });
+    objects.push(`<rect x="30" y="295" width="${width-60}" height="285" rx="13" fill="#19263b" stroke="#34465e"/>`);
+    objects.push(`<text x="52" y="328" font-family="Arial,sans-serif" font-size="14" font-weight="bold" fill="#43ffe4">${escape((phase==='store'?'KNOWLEDGE PREPARATION':'QUESTION ANSWERING')+' · STEP '+(index+1))}</text>`);
+    objects.push(`<text x="52" y="365" font-family="Arial,sans-serif" font-size="24" font-weight="bold" fill="white">${escape(steps[index].title)}</text>`);
+    const wrap=(text,max)=>{const out=[];for(const paragraph of text.split('\n')){let line='';for(const word of paragraph.split(/\s+/)){if((line+' '+word).trim().length>max){out.push(line);line=word}else line=(line+' '+word).trim()}out.push(line)}return out};
+    wrap(steps[index].desc,Math.round((width-100)/9)).slice(0,3).forEach((line,i)=>objects.push(`<text x="52" y="${397+i*23}" font-family="Arial,sans-serif" font-size="15" fill="#e4eeff">${escape(line)}</text>`));
+    const lines=exampleFor(steps[index]).split('\n');
+    objects.push(`<rect x="52" y="472" width="${width-104}" height="88" rx="9" fill="#0d1625" stroke="#2d3c54"/>`);
+    lines.slice(0,4).forEach((line,i)=>objects.push(`<text x="64" y="${490+i*17}" font-family="monospace" font-size="12" fill="#5df9e7">${escape(line)}</text>`));
+    return objects.join('')+'</svg>';
+  }
+  function download(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),3000)}
+  function status(message){$('status').textContent=message}
+  $('saveHTML').addEventListener('click',()=>download(new Blob(['<!doctype html>\n'+document.documentElement.outerHTML],{type:'text/html;charset=utf-8'}),'OpenAI_RAG_Interactive_Next_Step.html'));
+  $('saveSVG').addEventListener('click',()=>{download(new Blob([svgExport()],{type:'image/svg+xml;charset=utf-8'}),'OpenAI_RAG_Workflow.svg');status('SVG saved.')});
+  function pngBlob(){return new Promise((resolve,reject)=>{const svg=svgExport(),uri=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));const img=new Image();img.onload=()=>{const c=document.createElement('canvas');c.width=img.width*2;c.height=img.height*2;const ctx=c.getContext('2d');ctx.drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(uri);c.toBlob(b=>b?resolve(b):reject(Error('PNG encoding failed')),'image/png')};img.onerror=()=>{URL.revokeObjectURL(uri);reject(Error('PNG render failed'))};img.src=uri})}
+  $('savePNG').addEventListener('click',async()=>{try{download(await pngBlob(),'OpenAI_RAG_Workflow.png');status('PNG saved.')}catch(e){status(e.message)}});
+  $('copyImage').addEventListener('click',async()=>{try{const blob=await pngBlob();if(!navigator.clipboard?.write||typeof ClipboardItem==='undefined')throw Error('Image clipboard is not supported here. Use Save PNG instead.');await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);status('Diagram image copied. Paste with Ctrl+V.')}catch(e){status(e.message)}});
+  window.addEventListener('keydown',e=>{if(e.target instanceof HTMLInputElement)return;if(e.key==='ArrowRight')$('next').click();if(e.key==='ArrowLeft')$('prev').click()});
+  render();
+})();
+</script>
+</body>
+</html>
